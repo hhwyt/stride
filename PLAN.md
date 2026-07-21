@@ -301,10 +301,11 @@ self-reported by the agent. `{model}` is substituted by complexity tier. Tests i
 - **Integration test** `skill_meta.test.ts`: parse SKILL.md front-matter → valid `name`/`description`; body references the
   real `stride` subcommands (guards against command drift).
 
-**F036 — MCP server (optional)**  (deps: F034)
-- **Does:** expose `stride` verbs as MCP tools for other agents.
-- **Integration test** `mcp.test.ts`: start the server in-process, call the `status` tool → returns structured JSON matching
-  the CLI. (Marked optional; skipped if the stdlib-only MCP shim is not built.)
+**F036 — MCP server**  (deps: F034)
+- **Does:** expose `stride` verbs (status/next/ready/check/run/init) as MCP tools over stdio, as a zero-dependency
+  newline-delimited JSON-RPC 2.0 shim (`stride mcp`), so Cursor/Windsurf/Roo/etc. can drive a build.
+- **Integration test** `mcp.test.ts`: spawn `stride mcp`, send initialize + tools/list + tools/call(stride_status) over
+  stdio → assert the server identifies as `stride`, lists the tools, and returns the status text.
 
 **F037 — long-run.sh headless loop**  (deps: F018)
 - **Does:** a container-friendly `while` loop calling `stride run`, honoring `AGENT_STOP`, budget, and logging to

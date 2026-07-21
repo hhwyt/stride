@@ -14,6 +14,7 @@ import { run } from "./scheduler.js";
 import { renderStatus } from "./status.js";
 import { analyze, expand } from "./complexity.js";
 import { gradeText } from "./grade.js";
+import { startMcpServer } from "./mcp.js";
 
 const USAGE = `stride — evidence-gated build harness
 
@@ -31,6 +32,7 @@ Commands:
   status               plain-text progress / ready / blocked / cost
   next | ready         show the next task / all ready tasks
   add "<description>"  append a feature to features.md and regenerate
+  mcp                  run as an MCP server over stdio (for Cursor/Windsurf/etc.)
 
 Global:
   --cwd <dir>          operate on this project directory (default: current dir)
@@ -181,6 +183,11 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       const tasks = generate(root);
       console.log(`added; ${tasks.length} tasks total`);
       return 0;
+    }
+
+    case "mcp": {
+      startMcpServer();
+      return new Promise<number>(() => {}); // runs until stdin closes (process.exit on close)
     }
 
     case "run": {
