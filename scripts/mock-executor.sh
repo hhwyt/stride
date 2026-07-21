@@ -46,6 +46,7 @@ EOF
 fi
 
 # implement mode
+if [ -n "${STRIDE_MOCK_SLEEP:-}" ]; then sleep "$STRIDE_MOCK_SLEEP"; fi
 content="ok"
 case " ${STRIDE_MOCK_FAIL_IDS:-} " in
   *" ${id} "*) content="bad" ;;

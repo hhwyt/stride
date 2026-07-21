@@ -21,7 +21,7 @@ export interface Config {
     reachability: boolean;
     reachability_blocks: boolean;
   };
-  executor: { command: string; prompt_via: "stdin" | "arg" };
+  executor: { command: string; prompt_via: "stdin" | "arg"; timeout_seconds: number };
   models: { fast: string; standard: string; capable: string };
   budget: { max_cost_usd: number };
 }
@@ -41,6 +41,7 @@ export function defaults(): Config {
     executor: {
       command: "claude -p --model {model} --permission-mode acceptEdits",
       prompt_via: "stdin",
+      timeout_seconds: 900,
     },
     models: {
       fast: "claude-haiku-4-5-20251001",

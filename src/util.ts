@@ -18,6 +18,7 @@ export interface RunOpts {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
   input?: string;
+  timeoutMs?: number;
 }
 
 export function runSync(command: string, opts: RunOpts = {}): RunResult {
@@ -42,13 +43,32 @@ export function runAsync(command: string, opts: RunOpts = {}): Promise<RunResult
     });
     let stdout = "";
     let stderr = "";
+    let done = false;
+    let timer: NodeJS.Timeout | undefined;
+    const finish = (r: RunResult) => {
+      if (done) return;
+      done = true;
+      if (timer) clearTimeout(timer);
+      resolve(r);
+    };
+    // A hung executor (e.g. claude -p) must not freeze a long-running build.
+    if (opts.timeoutMs && opts.timeoutMs > 0) {
+      timer = setTimeout(() => {
+        try {
+          child.kill("SIGKILL");
+        } catch {
+          /* already gone */
+        }
+        finish({ code: 124, stdout, stderr: `${stderr}\n[stride] executor timed out after ${opts.timeoutMs}ms` });
+      }, opts.timeoutMs);
+    }
     child.stdout.on("data", (d) => (stdout += d.toString()));
     child.stderr.on("data", (d) => (stderr += d.toString()));
     if (opts.input !== undefined) {
       child.stdin.write(opts.input);
       child.stdin.end();
     }
-    child.on("close", (code) => resolve({ code: code ?? 1, stdout, stderr }));
-    child.on("error", () => resolve({ code: 1, stdout, stderr }));
+    child.on("close", (code) => finish({ code: code ?? 1, stdout, stderr }));
+    child.on("error", () => finish({ code: 1, stdout, stderr }));
   });
 }

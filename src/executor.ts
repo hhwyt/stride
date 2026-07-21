@@ -72,9 +72,10 @@ export async function runExecutor(
   const model = resolveModel(cfg, task);
   const command = cfg.executor.command.replaceAll("{model}", model);
   const env = envFor(cfg, task, root, mode, model, steer);
+  const timeoutMs = (cfg.executor.timeout_seconds ?? 900) * 1000;
   if (cfg.executor.prompt_via === "arg") {
     // shq() shell-escapes the prompt; JSON.stringify would leave $()/backticks live.
-    return runAsync(`${command} ${shq(prompt)}`, { cwd, env });
+    return runAsync(`${command} ${shq(prompt)}`, { cwd, env, timeoutMs });
   }
-  return runAsync(command, { cwd, env, input: prompt });
+  return runAsync(command, { cwd, env, input: prompt, timeoutMs });
 }

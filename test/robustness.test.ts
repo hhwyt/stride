@@ -55,6 +55,23 @@ describe("task id validation (shell safety)", () => {
   });
 });
 
+describe("executor timeout", () => {
+  it("kills a hung executor instead of freezing the run", () => {
+    const dir = tmpProject({
+      features: ONE,
+      config: { executor: { timeout_seconds: 1 }, run: { retry_budget: 1 } },
+    });
+    dirs.push(dir);
+    runCli(["init"], dir);
+    const start = Date.now();
+    const r = runCli(["run", "--once"], dir, { STRIDE_MOCK_SLEEP: "10" });
+    expect(r.code).toBe(0);
+    expect(Date.now() - start).toBeLessThan(9000); // did not wait the full 10s sleep
+    const fl = readJson<any[]>(join(dir, "feature_list.json"));
+    expect(fl[0].passes).toBe(false);
+  });
+});
+
 describe("numeric argument validation", () => {
   it("rejects a non-numeric -j instead of silently doing nothing", () => {
     const dir = tmpProject({ features: ONE });
