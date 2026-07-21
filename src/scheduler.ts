@@ -101,7 +101,13 @@ async function buildVerify(
 
   const c = commit(cwd, `feat(${task.id}): ${task.description}`);
   if (c.code !== 0) {
-    return { ...base, ok: false, reason: `commit failed: ${c.stderr.trim()}` };
+    // A failed commit is a real failure ONLY if the tree still has uncommitted
+    // changes (e.g. a pre-commit hook rejected it). If the tree is clean, the agent
+    // already committed its own work — and the test gate passed — so accept it.
+    const dirty = git("status --porcelain", cwd).stdout.trim() !== "";
+    if (dirty) {
+      return { ...base, ok: false, reason: `commit failed: ${c.stderr.trim() || "unknown"}` };
+    }
   }
   base.reachability = reachabilityGate(cfg, cwd, startSha);
   return { ...base, ok: true, reason: "ok" };

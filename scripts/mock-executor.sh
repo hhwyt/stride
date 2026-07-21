@@ -57,5 +57,11 @@ case " ${STRIDE_MOCK_ORPHAN_IDS:-} " in
   *" ${id} "*) printf 'export const orphan = 1;\n' > "orphan_${id}.ts" ;;
 esac
 
+# Simulate an agent that commits its own work (stride's own commit then finds nothing).
+if [ -n "${STRIDE_MOCK_SELFCOMMIT:-}" ]; then
+  git add -A >/dev/null 2>&1 || true
+  git commit -q -m "agent self-commit ${id}" >/dev/null 2>&1 || true
+fi
+
 echo "STRIDE_COST 0.01" 1>&2
 exit 0

@@ -55,6 +55,19 @@ describe("task id validation (shell safety)", () => {
   });
 });
 
+describe("agent self-commit is not a failure", () => {
+  it("lands a task even when the agent committed its own work", () => {
+    const dir = tmpProject({ features: ONE });
+    dirs.push(dir);
+    runCli(["init"], dir);
+    const r = runCli(["run", "--once"], dir, { STRIDE_MOCK_SELFCOMMIT: "1" });
+    expect(r.code).toBe(0);
+    const fl = readJson<any[]>(join(dir, "feature_list.json"));
+    expect(fl[0].passes).toBe(true);
+    expect(fl[0].status).toBe("done");
+  });
+});
+
 describe("executor timeout", () => {
   it("kills a hung executor instead of freezing the run", () => {
     const dir = tmpProject({
