@@ -160,9 +160,9 @@ export async function decomposeInput(
   }
   const prompt = [
     `Decompose the following into a flat list of atomic, independently testable features.`,
-    `Write them to a file named "features.md" in the current directory using this format:`,
-    `# <category>: <description>\n- <step>\n- <step>\nverify: <how an integration test proves it>\npriority: high|medium|low`,
-    `Every feature MUST include a concrete "verify:" line. Do not include placeholders (TBD/TODO).`,
+    `Output ONLY the features.md content — no preamble, no explanation, no code fences — in this exact format:`,
+    `# <category>: <description>\n- <step>\n- <step>\nverify: <how an integration test proves it>\npriority: high|medium|low\ndeps: <space-separated feature ids this depends on, or omit the line>`,
+    `Rules: every feature MUST have a concrete "verify:" line; keep features small and independently testable; order them so dependencies come first (ids are assigned by order as F001, F002, ...; reference them in "deps:"); no placeholders (TBD/TODO).`,
     parts.join("\n\n"),
   ].join("\n\n");
 
@@ -170,5 +170,19 @@ export async function decomposeInput(
     id: "decompose",
     description: "decompose input into features.md",
   });
-  await runExecutor(cfg, root, root, pseudoTask, prompt, "decompose");
+  // In headless print mode the agent returns the content on stdout rather than
+  // reliably writing a file via a tool — so stride captures it and writes features.md.
+  const res = await runExecutor(cfg, root, root, pseudoTask, prompt, "decompose");
+  const content = extractFeaturesMd(res.stdout);
+  if (content.trim().length > 1) writeFileSync(p.featuresMd(root), content);
+}
+
+/** Pull the features.md body out of an agent's stdout (strip fences/preamble). */
+export function extractFeaturesMd(out: string): string {
+  let s = out;
+  const fence = s.match(/```(?:markdown|md)?\s*\n([\s\S]*?)```/);
+  if (fence) s = fence[1];
+  const idx = s.search(/^#\s/m);
+  if (idx > 0) s = s.slice(idx);
+  return s.trim() + "\n";
 }

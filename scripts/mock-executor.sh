@@ -30,7 +30,8 @@ if [ "$mode" = "evaluate" ]; then
 fi
 
 if [ "$mode" = "decompose" ]; then
-  cat > features.md <<'EOF'
+  # Emit the features.md content on stdout; stride writes the file.
+  cat <<'EOF'
 # functional: user can sign up
 - create the signup form
 - store the new user
