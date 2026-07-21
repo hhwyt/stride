@@ -5,7 +5,8 @@
  *    concurrently, then integrate (merge + smoke) serially so the base stays clean.
  * feature_list.json is mutated only in the main thread → no write races.
  */
-import { relative } from "node:path";
+import { existsSync, readdirSync, unlinkSync } from "node:fs";
+import { join, relative } from "node:path";
 import { Config, tierName } from "./config.js";
 import { p } from "./paths.js";
 import {
@@ -84,7 +85,7 @@ async function buildVerify(
 
   const prompt = buildPrompt(task, "implement", steer ?? undefined);
   const ex = await runExecutor(cfg, cwd, root, task, prompt, "implement", steer);
-  base.cost = parseCost(ex.stderr) + parseCost(ex.stdout);
+  base.cost = parseCost(`${ex.stderr}\n${ex.stdout}`); // single match — avoid double-count
 
   const ev = runTestGate(cfg, cwd, root, task);
   base.evidencePath = relEvidence(ev.path, root);
@@ -102,7 +103,7 @@ async function buildVerify(
   if (c.code !== 0) {
     return { ...base, ok: false, reason: `commit failed: ${c.stderr.trim()}` };
   }
-  base.reachability = reachabilityGate(cfg, cwd, startSha || "HEAD~1");
+  base.reachability = reachabilityGate(cfg, cwd, startSha);
   return { ...base, ok: true, reason: "ok" };
 }
 
@@ -343,11 +344,43 @@ function integrate(
   return outcome;
 }
 
+/**
+ * Recover from an interrupted run (AGENT_STOP or a crash): reset in-progress tasks
+ * to pending, clear stale locks, and prune leftover worktrees/branches. Without this,
+ * an interrupted concurrent task would stay locked + in-progress forever.
+ */
+function reconcile(root: string): void {
+  if (!existsSync(p.featureList(root))) return;
+  const tasks = loadFeatures(p.featureList(root));
+  let changed = false;
+  for (const t of tasks) {
+    if (t.status === "in-progress") {
+      t.status = "pending";
+      changed = true;
+    }
+  }
+  if (changed) saveFeatures(tasks, p.featureList(root));
+  try {
+    for (const f of readdirSync(p.locksDir(root))) unlinkSync(join(p.locksDir(root), f));
+  } catch {
+    /* no locks dir */
+  }
+  if (isRepo(root)) {
+    git("worktree prune", root);
+    try {
+      for (const d of readdirSync(p.wtDir(root))) removeWorktree(root, d, `stride/${d}`);
+    } catch {
+      /* no worktree dir */
+    }
+  }
+}
+
 export async function run(
   root: string,
   cfg: Config,
   overrides: Partial<RunOptions> = {},
 ): Promise<RunResult> {
+  reconcile(root);
   const tasks = loadFeatures(p.featureList(root));
   const errs = validate(tasks);
   if (errs.length) throw new Error(errs.join("; "));

@@ -29,7 +29,7 @@ export interface Config {
 export function defaults(): Config {
   return {
     project: { name: "project" },
-    commands: { build: "", dev: "", smoke: "true", test: "true" },
+    commands: { build: "", dev: "", smoke: "", test: "" },
     run: {
       concurrency: 1,
       max_iterations: 1000,
@@ -55,9 +55,12 @@ function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
+const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
 function deepMerge(base: any, over: any): any {
   if (!isObject(over)) return base;
   for (const k of Object.keys(over)) {
+    if (UNSAFE_KEYS.has(k)) continue; // prevent prototype pollution from stride.json
     if (isObject(base[k]) && isObject(over[k])) deepMerge(base[k], over[k]);
     else base[k] = over[k];
   }

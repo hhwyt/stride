@@ -7,6 +7,11 @@ export interface RunResult {
   stderr: string;
 }
 
+/** POSIX single-quote escaping for values interpolated into `shell: true` commands. */
+export function shq(s: string): string {
+  return "'" + s.replaceAll("'", `'\\''`) + "'";
+}
+
 const MAX_BUFFER = 64 * 1024 * 1024;
 
 export interface RunOpts {

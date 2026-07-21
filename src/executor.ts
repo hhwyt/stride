@@ -1,7 +1,7 @@
 /** The pluggable coding agent: prompt assembly, model routing, invocation. */
 import { Config, modelForComplexity } from "./config.js";
 import { Task } from "./model.js";
-import { runAsync, RunResult } from "./util.js";
+import { runAsync, RunResult, shq } from "./util.js";
 
 export type Mode = "implement" | "evaluate" | "decompose";
 
@@ -73,7 +73,8 @@ export async function runExecutor(
   const command = cfg.executor.command.replaceAll("{model}", model);
   const env = envFor(cfg, task, root, mode, model, steer);
   if (cfg.executor.prompt_via === "arg") {
-    return runAsync(`${command} ${JSON.stringify(prompt)}`, { cwd, env });
+    // shq() shell-escapes the prompt; JSON.stringify would leave $()/backticks live.
+    return runAsync(`${command} ${shq(prompt)}`, { cwd, env });
   }
   return runAsync(command, { cwd, env, input: prompt });
 }

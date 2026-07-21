@@ -186,9 +186,23 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     case "run": {
       const cfg = loadConfig(root);
       const overrides: Parameters<typeof run>[2] = {};
-      if (values.concurrency) overrides.concurrency = Number(values.concurrency);
+      if (values.concurrency !== undefined) {
+        const n = Number(values.concurrency);
+        if (!Number.isInteger(n) || n < 1) {
+          console.error(`invalid -j/--concurrency: ${values.concurrency} (want a positive integer)`);
+          return 1;
+        }
+        overrides.concurrency = n;
+      }
       if (values.once) overrides.once = true;
-      if (values["max-iterations"]) overrides.maxIterations = Number(values["max-iterations"]);
+      if (values["max-iterations"] !== undefined) {
+        const n = Number(values["max-iterations"]);
+        if (!Number.isInteger(n) || n < 1) {
+          console.error(`invalid --max-iterations: ${values["max-iterations"]} (want a positive integer)`);
+          return 1;
+        }
+        overrides.maxIterations = n;
+      }
       const res = await run(root, cfg, overrides);
       console.log(`run: landed ${res.landed.length} (${res.landed.join(", ") || "-"}) — ${res.reason}`);
       return 0;

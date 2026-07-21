@@ -37,10 +37,16 @@ export function findCycle(tasks: Task[]): string[] | null {
   return null;
 }
 
+const ID_RE = /^[A-Za-z0-9._-]+$/;
+
 export function validate(tasks: Task[]): string[] {
   const errs: string[] = [];
   const ids = new Set<string>();
   for (const t of tasks) {
+    if (typeof t.id !== "string" || !ID_RE.test(t.id)) {
+      // ids flow into git branch/worktree commands; reject anything exotic.
+      errs.push(`invalid task id: ${JSON.stringify(t.id)}`);
+    }
     if (ids.has(t.id)) errs.push(`duplicate task id: ${t.id}`);
     ids.add(t.id);
   }

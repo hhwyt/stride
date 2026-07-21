@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { Config } from "./config.js";
 import { Task, Reachability } from "./model.js";
 import { p } from "./paths.js";
-import { runSync } from "./util.js";
+import { runSync, shq } from "./util.js";
 import { git } from "./git.js";
 import { buildPrompt, runExecutor } from "./executor.js";
 
@@ -23,10 +23,19 @@ export function runTestGate(
   root: string,
   task: Task,
 ): Evidence {
-  const env = { ...process.env, STRIDE_TASK_ID: task.id, STRIDE_ROOT: root };
-  const r = runSync(cfg.commands.test || "true", { cwd, env });
   mkdirSync(p.evidenceDir(root), { recursive: true });
   const evPath = join(p.evidenceDir(root), `${task.id}.log`);
+  // No test command means nothing can be verified — the gate MUST fail, not pass.
+  // Otherwise "done" would be meaningless for an unconfigured project.
+  if (!cfg.commands.test || !cfg.commands.test.trim()) {
+    writeFileSync(
+      evPath,
+      "no test command configured (commands.test is empty) — cannot verify.\nExit status: 1\n",
+    );
+    return { code: 1, path: evPath };
+  }
+  const env = { ...process.env, STRIDE_TASK_ID: task.id, STRIDE_ROOT: root };
+  const r = runSync(cfg.commands.test, { cwd, env });
   writeFileSync(
     evPath,
     `$ ${cfg.commands.test}\n${r.stdout}\n${r.stderr}\nExit status: ${r.code}\n`,
@@ -66,22 +75,26 @@ export function reachabilityGate(
   startSha: string,
 ): Reachability {
   if (!cfg.run.reachability) return null;
-  const changed = git(`diff --name-only ${startSha}..HEAD`, cwd)
+  if (!startSha) return "EXEMPT"; // no baseline to diff against (first-ever commit)
+  // Only files ADDED by this task — a modified existing file is already wired.
+  const added = git(`diff --name-only --diff-filter=A ${startSha}..HEAD`, cwd)
     .stdout.trim()
     .split("\n")
-    .filter(Boolean);
-  const added = changed.filter((f) => /\.(ts|tsx|js|jsx|py|rs|go|java)$/.test(f));
+    .filter(Boolean)
+    .filter((f) => /\.(ts|tsx|js|jsx|py|rs|go|java)$/.test(f));
   if (added.length === 0) return "EXEMPT";
+  // ORPHAN only if EVERY added module is referenced nowhere else.
+  let anyOrphan = false;
   for (const f of added) {
     const base = (f.split("/").pop() ?? "").replace(/\.\w+$/, "");
     if (!base) continue;
-    const grep = runSync(`git grep -l -F ${JSON.stringify(base)} || true`, { cwd });
+    const grep = runSync(`git grep -l -F ${shq(base)} || true`, { cwd });
     const hits = grep.stdout
       .trim()
       .split("\n")
       .filter(Boolean)
       .filter((h) => h !== f);
-    if (hits.length > 0) return "WIRED";
+    if (hits.length === 0) anyOrphan = true;
   }
-  return "ORPHAN";
+  return anyOrphan ? "ORPHAN" : "WIRED";
 }
