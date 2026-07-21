@@ -1,0 +1,29 @@
+{
+  "name": "stride-harness",
+  "version": "0.1.0",
+  "description": "Turn a goal, plan, or design docs into a dependency-ordered task graph, then build it with an evidence-gated, only-moves-forward agent loop (sequential or concurrent).",
+  "keywords": ["agent", "harness", "claude", "autonomous", "codegen", "long-running", "mcp"],
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "stride": "dist/cli.js"
+  },
+  "files": ["dist", "scripts", "skill", "plugin.json", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}

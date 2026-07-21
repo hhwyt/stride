@@ -1,0 +1,8 @@
+{
+  "name": "stride",
+  "version": "0.1.0",
+  "description": "Evidence-gated, only-moves-forward build harness for coding agents.",
+  "author": "stride contributors",
+  "license": "Apache-2.0",
+  "skills": ["skill/SKILL.md"]
+}

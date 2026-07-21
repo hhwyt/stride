@@ -1,0 +1,22 @@
+# build output
+dist/
+
+# dependencies
+node_modules/
+
+# stride runtime artifacts (created inside target projects, never committed here)
+.stride/
+AGENT_STOP
+STEER.md
+
+# test/coverage
+coverage/
+.vitest/
+
+# logs / os / editor
+*.log
+npm-debug.log*
+.DS_Store
+.idea/
+.vscode/
+*.tsbuildinfo
