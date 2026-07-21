@@ -80,6 +80,36 @@ Complexity routes the model (`1-4` fast, `5-7` standard, `8-10` capable).
 - Write `STEER.md` to redirect the next task; `touch AGENT_STOP` to stop gracefully.
 - Stuck tasks land in `.stride/BLOCKED.md` after the retry budget instead of spinning.
 
+## MCP server — drive stride from another agent
+stride ships an MCP (Model Context Protocol) server so any MCP client — Cursor, Windsurf, Roo,
+Claude Code — can drive a build as native tool calls, instead of a human running the CLI. It's a
+zero-dependency stdio JSON-RPC server started with `stride mcp`.
+
+Add it to your MCP client config:
+```json
+{
+  "mcpServers": {
+    "stride": { "command": "stride", "args": ["mcp"] }
+  }
+}
+```
+Then your IDE's agent can call these tools:
+| Tool | What it does |
+|---|---|
+| `stride_status` | progress, ready/blocked tasks, and cost |
+| `stride_next` / `stride_ready` | the next task / all ready tasks |
+| `stride_check` | grade the spec + validate the dependency graph |
+| `stride_run` | execute ready tasks (args: `concurrency`, `once`, `maxIterations`) |
+| `stride_init` | decompose input (`prompt`) and scaffold the project |
+
+Every tool takes an optional `cwd` (defaults to where the server runs). Typical loop: the agent
+calls `stride_next` to get a task, implements it, then `stride_status` to check progress — using
+stride's task graph and gates as the backbone.
+
+Two ways to use stride, same engine:
+- **CLI / skill** — stride drives an executor (`claude -p`); you start it and watch.
+- **MCP** — another agent drives stride, using it as a task-graph + gate layer inside its own loop.
+
 ## Design lineage
 The one-task-per-session discipline comes from *Multi-Agent Development with Claude Code*. The
 rich task model borrows from [claude-task-master](https://github.com/eyaltoledano/claude-task-master);
